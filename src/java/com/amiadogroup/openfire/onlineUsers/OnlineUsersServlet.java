@@ -121,7 +121,11 @@ public class OnlineUsersServlet extends HttpServlet {
 				.getSessions();
 		Set<String> users = new HashSet<String>(sessions.size());
 		for (ClientSession session : sessions) {
-			users.add(session.getAddress().toBareJID());
+            if (JiveGlobals.getBooleanProperty("plugin.onlineUsers.list.displayNick", false)) {
+                users.add(session.getUsername());
+            } else {
+    			users.add(session.getAddress().toBareJID());
+            }
 		}
 		return users;
 	}
