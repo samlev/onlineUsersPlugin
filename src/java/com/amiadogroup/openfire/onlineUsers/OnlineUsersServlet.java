@@ -35,6 +35,8 @@ import org.jivesoftware.openfire.SessionManager;
 import org.jivesoftware.openfire.session.ClientSession;
 import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.openfire.user.User;
+import org.jivesoftware.openfire.user.UserManager;
 
 /**
  * Servlet for serving the online users count and the list of online users
@@ -121,10 +123,12 @@ public class OnlineUsersServlet extends HttpServlet {
 		Collection<ClientSession> sessions = SessionManager.getInstance()
 				.getSessions();
 		Set<String> users = new HashSet<String>(sessions.size());
+		UserManager um = UserManager.getInstance();
 		for (ClientSession session : sessions) {
             if (JiveGlobals.getBooleanProperty("plugin.onlineUsers.list.displayNick", false)) {
                 try {
-					users.add(session.getUsername());
+                	User u = um.getUser(session.getUsername());
+					users.add(u.getName());
 				} catch (UserNotFoundException e) {
 					// Can't get a username - give a JID instead
 					users.add(session.getAddress().toBareJID());
