@@ -33,6 +33,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.jivesoftware.admin.AuthCheckFilter;
 import org.jivesoftware.openfire.SessionManager;
 import org.jivesoftware.openfire.session.ClientSession;
+import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.JiveGlobals;
 
 /**
@@ -122,7 +123,12 @@ public class OnlineUsersServlet extends HttpServlet {
 		Set<String> users = new HashSet<String>(sessions.size());
 		for (ClientSession session : sessions) {
             if (JiveGlobals.getBooleanProperty("plugin.onlineUsers.list.displayNick", false)) {
-                users.add(session.getUsername());
+                try {
+					users.add(session.getUsername());
+				} catch (UserNotFoundException e) {
+					// Can't get a username - give a JID instead
+					users.add(session.getAddress().toBareJID());
+				}
             } else {
     			users.add(session.getAddress().toBareJID());
             }
