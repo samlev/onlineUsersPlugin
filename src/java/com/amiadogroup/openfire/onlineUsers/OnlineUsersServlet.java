@@ -20,6 +20,7 @@ package com.amiadogroup.openfire.onlineUsers;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,12 +32,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.jivesoftware.admin.AuthCheckFilter;
+import org.jivesoftware.openfire.muc.MUCRole;
+import org.jivesoftware.openfire.muc.MUCRoom;
+import org.jivesoftware.openfire.muc.MultiUserChatService;
 import org.jivesoftware.openfire.SessionManager;
+import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.session.ClientSession;
 import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.JiveGlobals;
-import org.jivesoftware.openfire.user.User;
-import org.jivesoftware.openfire.user.UserManager;
 
 /**
  * Servlet for serving the online users count and the list of online users
@@ -120,24 +123,40 @@ public class OnlineUsersServlet extends HttpServlet {
 	 * @return online users list as a set
 	 */
 	private Set<String> getOnlineUsers() {
+		// get a flat list of MUC rooms
+		Collection<MUCRoom> rooms = new ArrayList<MUCRoom>();
+		
+		if (JiveGlobals.getBooleanProperty("plugin.onlineUsers.list.MUCNicks", false)) {
+			Collection<MultiUserChatService> MUCSs = XMPPServer.getInstance().getMultiUserChatManager().getMultiUserChatServices();
+			
+			for (MultiUserChatService MUCService : MUCSs) {
+				rooms.addAll(MUCService.getChatRooms());
+			}
+		}
+		
 		Collection<ClientSession> sessions = SessionManager.getInstance()
 				.getSessions();
-		Set<String> users = new HashSet<String>(sessions.size());
-		UserManager um = UserManager.getInstance();
+		Collection<String> users = new ArrayList<String>();
 		for (ClientSession session : sessions) {
-            if (JiveGlobals.getBooleanProperty("plugin.onlineUsers.list.displayNick", false)) {
-                try {
-                	User u = um.getUser(session.getUsername());
-					users.add(u.getName());
-				} catch (UserNotFoundException e) {
-					// Can't get a username - give a JID instead
-					users.add(session.getAddress().toBareJID());
-				}
+            if (JiveGlobals.getBooleanProperty("plugin.onlineUsers.list.MUCNicks", false)) {
+            	for (MUCRoom room : rooms) {
+            		try {
+						Collection<MUCRole> roles = room.getOccupantsByBareJID(session.getAddress().toBareJID());
+						
+						for (MUCRole role : roles) {
+							users.add(role.getNickname());
+						}
+					} catch (UserNotFoundException e) {
+						// user isn't in MUC - ignore
+						users.add("Unknown user");
+					}
+            	}
             } else {
     			users.add(session.getAddress().toBareJID());
             }
 		}
-		return users;
+		Set<String> userSet = new HashSet<String>(users);
+		return userSet;
 	}
 
 	/**
